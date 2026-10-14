@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cofre de Senhas</title>
+<style>
+:root{
+  --bg:#eceef1; --panel:#ffffff; --ink:#1c2430; --muted:#5b6676; --rule:#d7dbe1; --rule-strong:#b4bcc7;
+  --accent:#7b2433; --accent-ink:#ffffff; --tint:#f4eaec; --danger:#a4261d; --ok:#2c6e49;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Consolas,"Liberation Mono",monospace;
+  --gutter:max(16px,env(safe-area-inset-left,0px));
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#14171c;--panel:#1b1f26;--ink:#e7eaee;--muted:#9aa4b2;--rule:#2b313a;--rule-strong:#434b57;
+    --accent:#e2929e;--accent-ink:#2a0d13;--tint:#2a1e22;--danger:#f08a80;--ok:#7cc79b;color-scheme:dark}
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2{font-family:var(--serif);font-weight:600;margin:0}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible,.btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+
+/* botões */
+.btn,button.b{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--panel);
+  border:1px solid var(--rule-strong);border-radius:4px;padding:8px 16px;font-size:14px;line-height:1.2;color:var(--ink)}
+.btn:hover,button.b:hover{border-color:var(--ink)}
+.primary{background:var(--accent)!important;border-color:var(--accent)!important;color:var(--accent-ink)!important;font-weight:600}
+.primary:hover{filter:brightness(1.1)}
+button:disabled{opacity:.5;cursor:default}
+.lnk{background:none;border:0;padding:4px 6px;margin:-4px 0;color:var(--accent);font-size:13.5px;border-radius:3px}
+.lnk:hover{text-decoration:underline}
+.lnk.danger{color:var(--danger)}
+
+/* campos */
+input{width:100%;background:var(--panel);border:1px solid var(--rule-strong);border-radius:4px;padding:9px 11px}
+input::placeholder{color:var(--muted);opacity:.8}
+label{display:flex;flex-direction:column;gap:5px;font-size:13.5px;font-weight:500}
+label small{font-weight:400;color:var(--muted)}
+.inline{display:flex;gap:6px}
+.inline input{flex:1;min-width:0}
+
+/* tela de acesso */
+.gate{max-width:400px;margin:0 auto;padding:12vh var(--gutter) 40px}
+.gate h2{font-size:28px;letter-spacing:-.01em}
+.gate .lede{color:var(--muted);margin:8px 0 22px;border-bottom:1px solid var(--rule-strong);padding-bottom:18px}
+.gate form{display:flex;flex-direction:column;gap:14px}
+.err{color:var(--danger);font-size:13.5px;min-height:1.3em}
+.gate .restore{margin-top:26px;padding-top:18px;border-top:1px solid var(--rule);font-size:13.5px;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+
+/* cabeçalho */
+.topbar{background:var(--panel);border-bottom:1px solid var(--rule-strong)}
+.topbar-in{max-width:1060px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-right,0px)) 14px var(--gutter);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.topbar h1{font-size:21px;letter-spacing:-.005em}
+.status{font-size:12.5px;color:var(--muted)}
+.status.ok{color:var(--muted)}
+.status.err{color:var(--danger);font-weight:600}
+.bar{display:flex;flex-wrap:wrap;gap:8px}
+
+/* estrutura */
+.shell{max-width:1060px;margin:0 auto;padding:26px max(16px,env(safe-area-inset-right,0px)) 56px var(--gutter);
+  display:grid;grid-template-columns:190px minmax(0,1fr);gap:36px;align-items:start}
+.catnav{position:sticky;top:20px}
+.cats-title{font-family:var(--serif);font-size:15px;color:var(--muted);margin-bottom:8px}
+.cats-list{display:flex;flex-direction:column;border-top:1px solid var(--rule-strong)}
+.cat{display:flex;justify-content:space-between;align-items:baseline;gap:10px;text-align:left;width:100%;
+  background:none;border:0;border-bottom:1px solid var(--rule);border-left:3px solid transparent;padding:9px 8px 9px 10px;color:var(--ink)}
+.cat:hover{background:var(--tint)}
+.cat.on{border-left-color:var(--accent);background:var(--tint);font-weight:600}
+.cat .n{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;font-weight:400}
+.content{display:flex;flex-direction:column;gap:22px;min-width:0}
+
+/* lista */
+.group .ghead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.group h2{font-size:19px}
+.group .ghead span{font-size:13px;color:var(--muted)}
+.cols,.entry{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr) 110px;gap:14px;align-items:center}
+.cols{padding:8px 0;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--rule-strong)}
+.entry{padding:12px 0;border-bottom:1px solid var(--rule)}
+.entry:hover{background:color-mix(in srgb,var(--tint) 55%,transparent)}
+.c{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.c-name{flex-direction:column;align-items:flex-start;gap:1px}
+.c-name strong{font-weight:600;overflow-wrap:anywhere}
+.sub{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.val{overflow-wrap:anywhere;min-width:0}
+.pw{font-family:var(--mono);font-size:14px}
+.none{color:var(--rule-strong)}
+.tools{display:flex;gap:2px}
+.c-act{justify-content:flex-end;gap:2px;font-size:13.5px}
+.empty{padding:44px 8px;color:var(--muted);border-top:2px solid var(--ink)}
+.empty b{color:var(--ink);font-family:var(--serif);font-size:18px;display:block;margin-bottom:4px}
+
+/* formulário */
+.form{background:var(--panel);border:1px solid var(--rule-strong);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:16px}
+.form h2{font-size:19px;border-bottom:1px solid var(--rule);padding-bottom:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* exportar */
+.export{border-top:2px solid var(--ink);padding-top:2px}
+.export summary{cursor:pointer;font-family:var(--serif);font-size:19px;font-weight:600;padding:10px 0}
+.xrow{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--rule)}
+.xrow p{margin:0;font-size:13.5px;color:var(--muted);max-width:52ch}
+.xrow b{display:block;font-weight:600;color:var(--ink);font-size:14.5px}
+.export .imp{padding:14px 0;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.export .imp label{width:100%;max-width:360px}
+.aviso{margin:6px 0 0;font-size:13px;color:var(--muted);max-width:68ch;border-left:3px solid var(--rule-strong);padding-left:12px}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:4px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* celular */
+@media (max-width:760px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:18px;padding-top:18px}
+  .catnav{position:static}
+  .cats-title{display:none}
+  .cats-list{flex-direction:row;overflow-x:auto;border-top:0;gap:6px;padding-bottom:4px}
+  .cat{width:auto;flex:none;border:1px solid var(--rule-strong);border-radius:4px;padding:6px 12px;gap:8px}
+  .cat.on{border-color:var(--accent)}
+  .cols{display:none}
+  .entry{grid-template-columns:minmax(0,1fr);gap:6px;padding:14px 0}
+  .c[data-l]::before{content:attr(data-l);flex:0 0 58px;font-size:12.5px;color:var(--muted)}
+  .c{flex-wrap:nowrap}
+  .c-name{flex-wrap:wrap}
+  .c-act{justify-content:flex-start;padding-left:58px}
+  .grid2{grid-template-columns:1fr}
+  .xrow{flex-direction:column;align-items:flex-start;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="gate" id="lockView">
+  <h2 id="lockTitle">Cofre de Senhas</h2>
+  <p class="lede" id="lockText">Carregando…</p>
+  <form id="lockForm">
+    <label>Senha mestra
+      <input id="m1" type="password" autocomplete="current-password">
+    </label>
+    <label id="m2wrap" hidden>Repita a senha mestra
+      <input id="m2" type="password" autocomplete="new-password">
+    </label>
+    <div class="err" id="lockErr" role="alert"></div>
+    <button class="btn primary" id="lockBtn" type="submit">Abrir cofre</button>
+  </form>
+  <div class="restore" id="restoreBox" hidden>
+    <span>Já tem um backup (.json) de outro aparelho? Digite acima a senha mestra daquele cofre e escolha o arquivo.</span>
+    <label class="btn" style="flex-direction:row">Restaurar backup
+      <input type="file" id="restoreIn" accept=".json,application/json" hidden>
+    </label>
+  </div>
+</div>
+
+<div id="appView" hidden>
+  <header class="topbar">
+    <div class="topbar-in">
+      <div>
+        <h1>Cofre de Senhas</h1>
+        <div id="status" class="status"></div>
+      </div>
+      <div class="bar">
+        <button class="btn primary" id="btnNew">Novo login</button>
+        <button class="btn" id="btnLock">Bloquear</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="catnav" aria-label="Categorias">
+      <div class="cats-title">Categorias</div>
+      <div class="cats-list" id="chips"></div>
+    </nav>
+
+    <main class="content">
+      <section class="form" id="form" hidden>
+        <h2 id="formTitle">Novo login</h2>
+        <div class="grid2">
+          <label>Serviço *
+            <input id="fNome" placeholder="Ex.: Projudi TJPR">
+          </label>
+          <label>Categoria
+            <input id="fCat" list="cats" placeholder="Ex.: Tribunais">
+            <datalist id="cats"></datalist>
+          </label>
+          <label>Usuário
+            <input id="fLogin" autocomplete="off" placeholder="CPF, e-mail ou nome de usuário">
+          </label>
+          <label>Senha
+            <span class="inline">
+              <input id="fSenha" type="password" autocomplete="new-password">
+              <button type="button" class="btn" id="togF">Ver</button>
+              <button type="button" class="btn" id="gen">Gerar</button>
+            </span>
+          </label>
+          <label>Endereço do site <small>(opcional)</small>
+            <input id="fSite" placeholder="Ex.: projudi.tjpr.jus.br">
+          </label>
+          <label>Observações <small>(opcional)</small>
+            <input id="fObs" placeholder="Ex.: token no celular">
+          </label>
+        </div>
+        <div class="bar">
+          <button class="btn primary" id="btnOk">Adicionar</button>
+          <button class="btn" id="btnCancel">Cancelar</button>
+        </div>
+      </section>
+
+      <input id="q" type="search" placeholder="Buscar por serviço, usuário ou site" aria-label="Buscar">
+      <div id="out"></div>
+
+      <details class="export" id="expPanel">
+        <summary>Exportar e importar</summary>
+        <div class="xrow">
+          <p><b>Backup criptografado (.json)</b>Para levar o cofre a outro aparelho. Só abre com a sua senha mestra.</p>
+          <button class="btn" id="exJson">Baixar .json</button>
+        </div>
+        <div class="xrow">
+          <p><b>Lista em texto (.txt)</b>Fácil de ler, mas as senhas ficam visíveis no arquivo.</p>
+          <button class="btn" id="exTxt">Baixar .txt</button>
+        </div>
+        <div class="xrow">
+          <p><b>Planilha (.csv)</b>Formato do Bitwarden. Para importar lá: Ferramentas, Importar dados, Bitwarden (csv).</p>
+          <button class="btn" id="exCsv">Baixar .csv</button>
+        </div>
+        <div class="imp">
+          <label class="btn" style="flex-direction:row">Importar .json, .csv ou .txt
+            <input type="file" id="fileIn" accept=".json,.csv,.txt,application/json,text/csv,text/plain" hidden>
+          </label>
+          <label>Senha do backup .json <small>(só se for diferente da atual)</small>
+            <input id="bkPass" type="password" autocomplete="off">
+          </label>
+        </div>
+        <p class="aviso">Os dados ficam salvos neste navegador, criptografados com a sua senha mestra. Se limpar os dados do navegador ou trocar de aparelho, o cofre não vai junto: baixe o backup .json de vez em quando. Os arquivos .txt e .csv não têm proteção; apague-os depois de usar.</p>
+      </details>
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const STORE_KEY="cofre_portatil_v1";
+const DEFAULT_CATS=["Tribunais","Bancos","E-mail","Governo","Clientes","Redes sociais","Outros"];
+const AUTOLOCK_MS=5*60*1000;
+let key=null, salt=null, items=[], editing=null, filter="Todas", confirmDel=null, idleTimer=null;
+let storeOk=true;
+const $=id=>document.getElementById(id);
+const enc=new TextEncoder(), dec=new TextDecoder();
+
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("show"),2200)}
+function status(t,cls){const s=$("status");s.textContent=t;s.className="status"+(cls?" "+cls:"")}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function uid(){const a=new Uint8Array(6);crypto.getRandomValues(a);return [...a].map(b=>b.toString(16).padStart(2,"0")).join("")}
+function b64(buf){let s="";const u=new Uint8Array(buf);for(let i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)}
+function unb64(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+
+/* ---------- Criptografia ---------- */
+async function deriveKey(pass,saltBytes){
+  const base=await crypto.subtle.importKey("raw",enc.encode(pass),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt:saltBytes,iterations:250000,hash:"SHA-256"},
+    base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function sealBlob(){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,enc.encode(JSON.stringify({items})));
+  return {app:"cofre-de-senhas",v:1,salt:b64(salt),iv:b64(iv),ct:b64(ct),updated:Date.now()};
+}
+async function openBlob(blob,k){
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:unb64(blob.iv)},k,unb64(blob.ct));
+  return JSON.parse(dec.decode(pt)).items||[];
+}
+
+/* ---------- Armazenamento no navegador ---------- */
+function readStore(){try{const r=localStorage.getItem(STORE_KEY);return r?JSON.parse(r):null}catch(e){storeOk=false;return null}}
+let persistChain=Promise.resolve();
+function persist(){persistChain=persistChain.then(doPersist,doPersist);return persistChain}
+async function doPersist(){
+  if(!key)return;
+  const blob=await sealBlob();
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(blob));statusSaved()}
+  catch(e){storeOk=false;status("O navegador não deixou salvar. Baixe o backup .json para não perder nada.","err")}
+}
+
+function lastBackup(){try{return +localStorage.getItem("cofre_ultimo_backup")||0}catch(e){return 0}}
+function statusSaved(){
+  const n=items.length, lb=lastBackup();
+  let t=`${n} ${n===1?"login salvo":"logins salvos"} neste aparelho.`;
+  if(n){
+    if(!lb)t+=" Nenhum backup feito ainda.";
+    else{const d=Math.floor((Date.now()-lb)/86400000);if(d>=30)t+=` Último backup há ${d} dias.`}
+  }
+  status(t,"ok");
+}
+
+/* ---------- Bloqueio ---------- */
+let stored=null;
+function showLock(){
+  stored=readStore();
+  $("appView").hidden=true;$("lockView").hidden=false;
+  $("m1").value="";$("m2").value="";$("lockErr").textContent="";
+  if(stored){
+    $("lockTitle").textContent="Cofre de Senhas";
+    $("lockText").textContent="Digite sua senha mestra para abrir.";
+    $("m2wrap").hidden=true;$("lockBtn").textContent="Abrir cofre";$("restoreBox").hidden=true;
+  }else{
+    $("lockTitle").textContent="Criar seu cofre";
+    $("lockText").textContent=storeOk
+      ?"Escolha uma senha mestra. Ela protege todas as suas senhas e é a única que você precisa decorar. Não existe recuperação se for esquecida."
+      :"Este navegador bloqueou o armazenamento local, então o cofre não ficará salvo. Use o botão de backup para guardar seus dados.";
+    $("m2wrap").hidden=false;$("lockBtn").textContent="Criar cofre";$("restoreBox").hidden=false;
+  }
+  setTimeout(()=>$("m1").focus(),50);
+}
+function enter(){
+  $("lockView").hidden=true;$("appView").hidden=false;
+  statusSaved();render();bumpIdle();
+}
+$("lockForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const p=$("m1").value, err=$("lockErr");err.textContent="";$("lockBtn").disabled=true;
+  try{
+    if(stored){
+      const s=unb64(stored.salt), k=await deriveKey(p,s);
+      try{items=await openBlob(stored,k);key=k;salt=s}
+      catch(_){err.textContent="Senha mestra incorreta.";return}
+    }else{
+      if(p.length<8){err.textContent="Use pelo menos 8 caracteres.";return}
+      if(p!==$("m2").value){err.textContent="As duas senhas não são iguais.";return}
+      salt=crypto.getRandomValues(new Uint8Array(16));key=await deriveKey(p,salt);items=[];
+      await persist();
+    }
+    enter();
+  }finally{$("lockBtn").disabled=false}
+});
+$("restoreIn").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  const p=$("m1").value, err=$("lockErr");err.textContent="";
+  if(!p){err.textContent="Digite primeiro a senha mestra do backup.";return}
+  try{
+    const blob=JSON.parse(await f.text());
+    const s=unb64(blob.salt), k=await deriveKey(p,s);
+    items=await openBlob(blob,k);key=k;salt=s;await persist();enter();toast(`${items.length} logins restaurados`);
+  }catch(_){err.textContent="Não foi possível abrir o backup. Confira a senha e o arquivo."}
+};
+function lock(){key=null;salt=null;items=[];closeForm();$("out").innerHTML="";$("chips").innerHTML="";
+  $("q").value="";$("bkPass").value="";$("fSenha").value="";filter="Todas";confirmDel=null;$("expPanel").open=false;showLock()}
+$("btnLock").onclick=lock;
+function bumpIdle(){clearTimeout(idleTimer);if(key)idleTimer=setTimeout(lock,AUTOLOCK_MS)}
+["click","keydown","touchstart"].forEach(ev=>document.addEventListener(ev,bumpIdle,{passive:true}));
+
+/* ---------- Lista ---------- */
+function cats(){const s=new Set(DEFAULT_CATS);items.forEach(i=>s.add(i.cat||"Outros"));return [...s]}
+function render(){
+  const used=cats().filter(c=>items.some(i=>(i.cat||"Outros")===c));
+  if(filter!=="Todas"&&!used.includes(filter)) filter="Todas";
+  const count=c=>items.filter(i=>(i.cat||"Outros")===c).length;
+  $("chips").innerHTML=[["Todas",items.length],...used.map(c=>[c,count(c)])].map(([c,n])=>
+    `<button class="cat ${c===filter?"on":""}" data-c="${esc(c)}"><span>${esc(c)}</span><span class="n">${n}</span></button>`).join("");
+  $("cats").innerHTML=cats().map(c=>`<option value="${esc(c)}">`).join("");
+  const q=$("q").value.trim().toLowerCase();
+  const vis=items.filter(i=>(filter==="Todas"||(i.cat||"Outros")===filter)&&
+    (!q||[i.nome,i.login,i.site,i.obs,i.cat].join(" ").toLowerCase().includes(q)));
+  if(!items.length){$("out").innerHTML=`<div class="empty"><b>Seu cofre está vazio</b>Clique em Novo login para cadastrar o primeiro acesso.</div>`;return}
+  if(!vis.length){$("out").innerHTML=`<div class="empty"><b>Nenhum resultado</b>Tente outro termo ou escolha outra categoria.</div>`;return}
+  const g={};vis.forEach(i=>{(g[i.cat||"Outros"] ||= []).push(i)});
+  $("out").innerHTML=Object.keys(g).sort((a,b)=>a.localeCompare(b,"pt")).map(c=>`
+    <section class="group">
+      <div class="ghead"><h2>${esc(c)}</h2><span>${g[c].length} ${g[c].length===1?"login":"logins"}</span></div>
+      <div class="cols"><span>Serviço</span><span>Usuário</span><span>Senha</span><span></span></div>
+      ${g[c].sort((a,b)=>a.nome.localeCompare(b.nome,"pt")).map(card).join("")}
+    </section>`).join("");
+}
+function card(i){
+  const del=confirmDel===i.id;
+  return `<article class="entry">
+    <div class="c c-name"><strong>${esc(i.nome)}</strong>${i.site?`<span class="sub">${esc(i.site)}</span>`:""}${i.obs?`<span class="sub">${esc(i.obs)}</span>`:""}</div>
+    <div class="c" data-l="Usuário">${i.login?`<span class="val">${esc(i.login)}</span><button class="lnk" data-copy="login" data-id="${i.id}" aria-label="Copiar usuário de ${esc(i.nome)}">Copiar</button>`:`<span class="none">–</span>`}</div>
+    <div class="c" data-l="Senha">${i.senha?`<span class="val pw" id="s_${i.id}">••••••••</span><span class="tools"><button class="lnk" data-show="${i.id}" aria-label="Mostrar senha de ${esc(i.nome)}">Ver</button><button class="lnk" data-copy="senha" data-id="${i.id}" aria-label="Copiar senha de ${esc(i.nome)}">Copiar</button></span>`:`<span class="none">–</span>`}</div>
+    <div class="c c-act">${del
+      ?`<button class="lnk danger" data-delok="${i.id}">Confirmar exclusão</button><button class="lnk" data-delno="1">Cancelar</button>`
+      :`<button class="lnk" data-edit="${i.id}" aria-label="Editar ${esc(i.nome)}">Editar</button><button class="lnk danger" data-del="${i.id}" aria-label="Excluir ${esc(i.nome)}">Excluir</button>`}</div>
+  </article>`;
+}
+
+/* ---------- Formulário ---------- */
+function openForm(item){
+  editing=item?item.id:null;
+  $("formTitle").textContent=item?"Editar login":"Novo login";
+  $("btnOk").textContent=item?"Salvar alterações":"Adicionar";
+  $("fNome").value=item?.nome||"";$("fCat").value=item?.cat||(filter!=="Todas"?filter:"");
+  $("fLogin").value=item?.login||"";$("fSenha").value=item?.senha||"";
+  $("fSite").value=item?.site||"";$("fObs").value=item?.obs||"";
+  $("fSenha").type="password";$("togF").textContent="Ver";
+  $("form").hidden=false;$("fNome").focus();window.scrollTo({top:0});
+}
+function closeForm(){$("form").hidden=true;editing=null}
+function submit(){
+  const nome=$("fNome").value.trim();
+  if(!nome){toast("Preencha o nome do serviço");$("fNome").focus();return}
+  const data={nome,cat:$("fCat").value.trim()||"Outros",login:$("fLogin").value.trim(),
+    senha:$("fSenha").value,site:$("fSite").value.trim(),obs:$("fObs").value.trim()};
+  if(editing){Object.assign(items.find(i=>i.id===editing),data);toast("Alterado")}
+  else{items.push({id:uid(),...data});toast("Adicionado")}
+  closeForm();render();persist();
+}
+function genPass(){
+  const all="abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*?";
+  const rnd=n=>{const a=new Uint32Array(1),lim=Math.floor(4294967296/n)*n;let x;do{crypto.getRandomValues(a);x=a[0]}while(x>=lim);return x%n};
+  let p;
+  do{p=Array.from({length:16},()=>all[rnd(all.length)]).join("")}
+  while(!(/[a-z]/.test(p)&&/[A-Z]/.test(p)&&/\d/.test(p)&&/[!@#$%&*?]/.test(p)));
+  $("fSenha").value=p;
+  $("fSenha").type="text";$("togF").textContent="Ocultar";
+}
+async function copy(text,isPass){
+  try{await navigator.clipboard.writeText(text);toast(isPass?"Senha copiada. Será apagada da área de transferência em 30 s":"Copiado");
+    if(isPass){clearTimeout(copy._t);copy._t=setTimeout(()=>{navigator.clipboard.writeText("").catch(()=>{})},30000)}}
+  catch(e){const t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();
+    try{document.execCommand("copy");toast("Copiado")}catch(_){toast("Não foi possível copiar")}t.remove()}
+}
+
+/* ---------- Exportar ---------- */
+function download(name,text,type){
+  const blob=new Blob([text],{type:type+";charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  toast("Arquivo gerado: "+name);
+}
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
+function toTxt(){
+  let t=`COFRE DE SENHAS\nExportado em: ${stamp()}\n${"=".repeat(40)}\n`;
+  const g={};items.forEach(i=>{(g[i.cat||"Outros"] ||= []).push(i)});
+  Object.keys(g).sort((a,b)=>a.localeCompare(b,"pt")).forEach(c=>{
+    t+=`\n[${c}]\n${"-".repeat(40)}\n`;
+    g[c].sort((a,b)=>a.nome.localeCompare(b.nome,"pt")).forEach(i=>{
+      t+=`Nome: ${i.nome}\nLogin: ${i.login||""}\nSenha: ${i.senha||""}\n`;
+      if(i.site)t+=`Site: ${i.site}\n`; if(i.obs)t+=`Obs: ${i.obs}\n`; t+=`\n`;
+    });
+  });
+  return t;
+}
+function csvCell(v){v=String(v??"");return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function toCsv(){
+  const head=["folder","favorite","type","name","notes","fields","reprompt","login_uri","login_username","login_password","login_totp"];
+  const rows=items.map(i=>[i.cat||"Outros","","login",i.nome,i.obs||"","","0",i.site||"",i.login||"",i.senha||"",""]);
+  return [head,...rows].map(r=>r.map(csvCell).join(",")).join("\r\n");
+}
+$("exJson").onclick=async()=>{if(!items.length){toast("Nada para exportar");return}
+  download(`cofre-backup-${stamp()}.json`,JSON.stringify(await sealBlob()),"application/json");
+  try{localStorage.setItem("cofre_ultimo_backup",String(Date.now()))}catch(e){}
+  statusSaved()};
+$("exTxt").onclick=()=>{if(!items.length){toast("Nada para exportar");return}
+  download(`senhas-${stamp()}.txt`,toTxt(),"text/plain")};
+$("exCsv").onclick=()=>{if(!items.length){toast("Nada para exportar");return}
+  download(`senhas-bitwarden-${stamp()}.csv`,toCsv(),"text/csv")};
+
+/* ---------- Importar ---------- */
+function parseCsv(text){
+  const rows=[];let row=[],cell="",q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=c}
+    else if(c==='"')q=true;
+    else if(c===","){row.push(cell);cell=""}
+    else if(c==="\n"){row.push(cell);rows.push(row);row=[];cell=""}
+    else if(c!=="\r")cell+=c;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row)}
+  return rows;
+}
+function fromCsv(text){
+  const rows=parseCsv(text.replace(/^﻿/,""));if(rows.length<2)return [];
+  const h=rows[0].map(x=>x.trim().toLowerCase()), ix=n=>h.indexOf(n);
+  const get=(r,n)=>ix(n)>=0?(r[ix(n)]||""):"";
+  return rows.slice(1).filter(r=>r.length>1&&(ix("type")<0||!get(r,"type")||get(r,"type").toLowerCase()==="login")).map(r=>({id:uid(),cat:get(r,"folder")||"Outros",nome:get(r,"name"),
+    login:get(r,"login_username"),senha:get(r,"login_password"),site:get(r,"login_uri"),obs:get(r,"notes")})).filter(i=>i.nome);
+}
+function fromTxt(txt){
+  const out=[];let cat="Outros",cur=null;const names={};DEFAULT_CATS.forEach(c=>names[c.toUpperCase()]=c);
+  txt.replace(/\r/g,"").split("\n").forEach(line=>{
+    const m=line.match(/^\[(.+)\]\s*$/);
+    if(m){const r=m[1].trim();cat=names[r]||(r===r.toUpperCase()?r.charAt(0)+r.slice(1).toLowerCase():r);return}
+    const f=line.match(/^(Nome|Login|Senha|Site|Obs):\s?(.*)$/);if(!f)return;
+    const k=f[1].toLowerCase(),v=f[2];
+    if(k==="nome"){cur={id:uid(),cat,nome:v,login:"",senha:"",site:"",obs:""};out.push(cur)}else if(cur)cur[k]=v;
+  });
+  return out;
+}
+$("fileIn").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  const text=await f.text();let list=[];
+  try{
+    if(f.name.toLowerCase().endsWith(".json")){
+      const blob=JSON.parse(text), pw=$("bkPass").value;
+      if(pw){const s=unb64(blob.salt);list=await openBlob(blob,await deriveKey(pw,s))}
+      else if(blob.salt===b64(salt))list=await openBlob(blob,key);
+      else{toast("Backup de outro cofre: digite a senha dele no campo abaixo");return}
+    }else if(f.name.toLowerCase().endsWith(".csv"))list=fromCsv(text);
+    else list=fromTxt(text);
+  }catch(_){toast("Não foi possível ler o arquivo. Confira a senha do backup.");return}
+  if(!list.length){toast("Nenhum login encontrado no arquivo");return}
+  const have=new Set(items.map(i=>(i.nome+"|"+i.login).toLowerCase()));
+  const novos=list.filter(i=>!have.has((i.nome+"|"+i.login).toLowerCase())).map(i=>({...i,id:uid()}));
+  items.push(...novos);render();persist();toast(`${novos.length} logins importados`);
+};
+
+/* ---------- Eventos ---------- */
+$("btnNew").onclick=()=>openForm(null);
+$("btnCancel").onclick=closeForm;
+$("btnOk").onclick=submit;
+$("form").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.tagName==="INPUT"){e.preventDefault();submit()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("form").hidden)closeForm()});
+$("gen").onclick=genPass;
+$("togF").onclick=()=>{const s=$("fSenha"),h=s.type==="password";s.type=h?"text":"password";$("togF").textContent=h?"Ocultar":"Ver"};
+$("q").oninput=render;
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b||!key)return;
+  const d=b.dataset;
+  if(d.c){filter=d.c;render()}
+  else if(d.copy){copy(items.find(x=>x.id===d.id)[d.copy],d.copy==="senha")}
+  else if(d.show){const s=$("s_"+d.show),i=items.find(x=>x.id===d.show),hid=s.textContent.startsWith("•");
+    s.textContent=hid?i.senha:"••••••••";b.textContent=hid?"Ocultar":"Ver"}
+  else if(d.edit){openForm(items.find(x=>x.id===d.edit))}
+  else if(d.del){confirmDel=d.del;render()}
+  else if(d.delno){confirmDel=null;render()}
+  else if(d.delok){items=items.filter(x=>x.id!==d.delok);confirmDel=null;render();persist();toast("Excluído")}
+});
+
+if(!window.crypto||!crypto.subtle){
+  $("lockText").textContent="Este navegador não oferece criptografia nesta página. Abra o arquivo em Chrome, Edge, Firefox ou Safari atualizados.";
+  $("lockForm").hidden=true;
+}else showLock();
+</script>
+</body>
+</html>
